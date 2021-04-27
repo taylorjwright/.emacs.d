@@ -5,17 +5,15 @@
 (tooltip-mode -1)           ; Disable tooltips
 (set-fringe-mode 10)        ; Give some breathing room
 
-(menu-bar-mode -1)          ; Disable the menu bar
+(menu-bar-mode -1)          ; enable the menu bar (needed for yabai)
 
 ;; nicer font
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 140)
 
 ;; title bar transparent to match theme
-(when (memq window-system '(mac ns))
-  (add-to-list 'default-frame-alist '(ns-appearance . dark)) ; nil for dark text
-  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
-
-(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+; (when (memq window-system '(mac ns))
+;  (add-to-list 'default-frame-alist '(ns-appearance . dark)) ; nil for dark text
+;  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
@@ -55,7 +53,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(which-key rainbow-delimiters rainbow-delimeters doom-themes counsel doom-modeline ivy use-package))
+   '(ivy-rich which-key rainbow-delimiters rainbow-delimeters doom-themes counsel doom-modeline ivy use-package))
  '(size-indication-mode t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -85,7 +83,15 @@
   (ivy-mode 1))
 
 ;; extended emacs commads for ivy
-(use-package counsel)
+(use-package counsel
+  :bind (("M-x" . counsel-M-x)
+	 ("C-x b" . counsel-ibuffer)
+	 ("C-x C-f" . counsel-find-file)))
+
+;; add details about commands
+(use-package ivy-rich
+  :init
+  (ivy-rich-mode 1))
 
 ;; a nicer looking theme
 (use-package doom-themes)
@@ -96,7 +102,6 @@
 (use-package all-the-icons)
 
 (use-package doom-modeline
-  :ensure t
   :init (doom-modeline-mode 1)
   :custom ((doom-modeline-height 15)))
 
@@ -110,3 +115,42 @@
   :diminish which-key-mode
   :config
   (setq which-key-idle-delay 0.3))
+
+;; install ess
+(use-package ess)
+
+;; ess shift-enter behaviour
+(setq ess-ask-for-ess-directory nil)
+(setq ess-local-process-name "R")
+(setq ansi-color-for-comint-mode 'filter)
+(setq comint-scroll-to-bottom-on-input t)
+(setq comint-scroll-to-bottom-on-output t)
+(setq comint-move-point-for-output t)
+(defun my-ess-start-R ()
+  (interactive)
+  (if (not (member "*R*" (mapcar (function buffer-name) (buffer-list))))
+      (progn
+        (delete-other-windows)
+        (setq w1 (selected-window))
+        (setq w1name (buffer-name))
+        (setq w2 (split-window w1 nil t))
+        (R)
+        (set-window-buffer w2 "*R*")
+        (set-window-buffer w1 w1name))))
+(defun my-ess-eval ()
+  (interactive)
+  (my-ess-start-R)
+  (if (and transient-mark-mode mark-active)
+      (call-interactively 'ess-eval-region)
+    (call-interactively 'ess-eval-line-and-step)))
+(add-hook 'ess-mode-hook
+          '(lambda()
+             (local-set-key [(shift return)] 'my-ess-eval)))
+(add-hook 'inferior-ess-mode-hook
+          '(lambda()
+             (local-set-key [C-up] 'comint-previous-input)
+             (local-set-key [C-down] 'comint-next-input)))
+(add-hook 'Rnw-mode-hook
+          '(lambda()
+             (local-set-key [(shift return)] 'my-ess-eval)))
+(require 'ess-site)
