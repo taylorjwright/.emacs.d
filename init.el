@@ -1,3 +1,5 @@
+;; Basic UI Configuration ------------------------------------------------------
+
 (setq inhibit-startup-message t)
 
 (scroll-bar-mode -1)        ; Disable visible scrollbar
@@ -7,16 +9,18 @@
 
 (menu-bar-mode -1)          ; enable the menu bar (needed for yabai)
 
-;; nicer font
+;; disable line numbers for some modes.
+(dolist (mode `(org-mode-hook
+		term-mode-hook
+		shell-mode-hook
+		eshell-mode-hook))
+  (add-hook mode(lambda () (display-line-numbers-mode 0))))
+
+;; Font Configuration ------------------------------------------------------
+
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 140)
 
-;; title bar transparent to match theme
-; (when (memq window-system '(mac ns))
-;  (add-to-list 'default-frame-alist '(ns-appearance . dark)) ; nil for dark text
-;  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
-
-;; Make ESC quit prompts
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+;; Package Manager Configuration -----------------------------------------------
 
 ;; Initialize package sources
 (require 'package)
@@ -40,12 +44,6 @@
 (column-number-mode)
 (global-display-line-numbers-mode t)
 
-;; disable line numbers for some modes.
-(dolist (mode `(org-mode-hook
-		term-mode-hook
-		shell-mode-hook
-		eshell-mode-hook))
-  (add-hook mode(lambda () (display-line-numbers-mode 0))))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -62,7 +60,8 @@
  ;; If there is more than one, they won't work right.
  )
 
-;; add ivy completion
+
+;; Ivy Configuration -----------------------------------------------------------
 (use-package ivy
   :diminish
   :bind (("C-s" . swiper)
@@ -86,7 +85,8 @@
 (use-package counsel
   :bind (("M-x" . counsel-M-x)
 	 ("C-x b" . counsel-ibuffer)
-	 ("C-x C-f" . counsel-find-file)))
+	 ("C-x C-f" . counsel-find-file)
+	 ("C-M-j" . counsel-switch-buffer)))
 
 ;; add details about commands
 (use-package ivy-rich
@@ -116,7 +116,52 @@
   :config
   (setq which-key-idle-delay 0.3))
 
-;; install ess
+
+;; Key Binding Configuration ---------------------------------------------------
+
+;; Make ESC quit prompts
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+;; better keybindings with general
+(use-package general)
+
+(defun evil-hook ()
+  (dolist (mode '(custom-mode
+		  eshell-mode
+		  git-rebase-mode
+		  erc-mode
+		  circe-server-mode
+		  circe-chat-mode
+		  circe-query-mode
+		  sauron-mode
+		  term-mode))
+    (add-to-list 'evil-emacs-state-modes mode)))
+
+(use-package evil
+  :init
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t) ;does this work? check with video
+  (setq evil-want-C-i-jump nil)
+  :hook (evil-mode . evil-hook)
+  :config
+  (evil-mode 1)
+  (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+
+  ;; Use visual line motions even outside of visual-line-mode buffers
+  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+  
+  ; start some buffers in emacs or normal mode
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'dashboard-mode 'normal))
+
+(use-package evil-collection
+  :after evil
+  :config
+  (evil-collection-init))
+
+;; ESS Configuration -----------------------------------------------------------
+
 (use-package ess)
 
 ;; ess shift-enter behaviour
@@ -154,3 +199,38 @@
           '(lambda()
              (local-set-key [(shift return)] 'my-ess-eval)))
 (require 'ess-site)
+
+;; Org Mode Configuration -----------------------------------------------------------
+
+(defun org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (auto-fill-mode 0)
+  (visual-line-mode 1)
+  (setq evil-auto-indent nil))
+
+(use-package org
+  :config
+  (setq org-ellipsis " ▾"))
+
+(use-package org-bullets
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+
+;; LaTeX Configuration -----------------------------------------------------------
+;; from https://www.youtube.com/watch?v=0qHloGTT8XE
+
+(with-eval-after-load 'ox-latex
+(add-to-list 'org-latex-classes
+             '("org-plain-latex"
+               "\\documentclass{article}
+           [NO-DEFAULT-PACKAGES]
+           [PACKAGES]
+           [EXTRA]"
+               ("\\section{%s}" . "\\section*{%s}")
+               ("\\subsection{%s}" . "\\subsection*{%s}")
+               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+               ("\\paragraph{%s}" . "\\paragraph*{%s}")
+               ("\\subparagraph{%s}" . "\\subparagraph*{%s}"))))
